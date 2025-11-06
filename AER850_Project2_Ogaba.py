@@ -198,7 +198,17 @@ if acc and val_acc and loss and val_loss:
 
 print("\nModel evaluation completed successfully.")
 
+#------------------------------------------------------------------------------
+#Step 5 Preparation: Save Model for Testing Purposes
+#------------------------------------------------------------------------------
 
+print("\n\n-----------------Step 5 Preparation: Save Model for Testing -----------------\n\n")
+
+#Saving our trained CNN model for usage in Step 5 (Model Testing)
+model.save("Project_2_CNN.keras")
+
+print("Model saved successfully as 'Project_2_CNN.keras'.")
+print("This saved model will be reloaded in Step 5 for testing and final predictions.\n")
 
 
 
