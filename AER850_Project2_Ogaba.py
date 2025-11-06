@@ -63,102 +63,140 @@ print(f"Test samples: {test_generator.samples}")
 
 #------------------------------------------------------------------------------
 #Step 2: Neural Network Architecture Design 
+#------------------------------------------------------------------------------
+
 print("\n\n-----------------Step 2: Neural Network Architecture Design -----------------\n\n")
+
+from tensorflow.keras import layers, models
 
 #-------------------------------------
 #Part A: Neural Network Model Design and Compilation 
 #-------------------------------------
 
-from tensorflow.keras import layers, models
-
 #Inputting our shapes from Step 1
-input_shape = INPUT_SHAPE      
+input_shape = (500, 500, 3)      
 num_classes = 3
 
 #Our custom CNN Model definition
-def build_model(input_shape=INPUT_SHAPE, num_classes=3):
-    model = models.Sequential([
+model = models.Sequential()
 
-        # --- Convolutional Block 1 ---
-        layers.Conv2D(32, (3, 3), activation='relu', padding='same', input_shape=input_shape),
-        layers.MaxPooling2D((2, 2)),
+# --- Convolutional Block 1 ---
+model.add(layers.Input(shape=input_shape))
+model.add(layers.Conv2D(64, (3, 3), activation='relu', padding='same'))
+model.add(layers.MaxPooling2D((2, 2)))
 
-        # --- Convolutional Block 2 ---
-        layers.Conv2D(64, (3, 3), activation='relu', padding='same'),
-        layers.MaxPooling2D((2, 2)),
+# --- Convolutional Block 2 ---
+model.add(layers.Conv2D(128, (3, 3), activation='relu', padding='same'))
+model.add(layers.MaxPooling2D((2, 2)))
 
-        # --- Convolutional Block 3 ---
-        layers.Conv2D(128, (3, 3), activation='relu', padding='same'),
-        layers.MaxPooling2D((2, 2)),
-        
-        # --- Additional Max Pooling Layer to reduce spatial size further ---
-        layers.MaxPooling2D((2, 2)),
+# --- Convolutional Block 3 ---
+model.add(layers.Conv2D(256, (3, 3), activation='relu', padding='same'))
+model.add(layers.MaxPooling2D((2, 2)))
 
-        # --- Flatten + Dense Layers ---
-        layers.Flatten(),
-        layers.Dense(128, activation='relu'),
-        layers.Dropout(0.5),
-        layers.Dense(num_classes, activation='softmax')
-    ])
-    return model
+#Adding an additional Max Pooling Layer to reduce spatial size further
+model.add(layers.MaxPooling2D((2, 2)))
 
+#Our Flatten and Dense Layers ---
+model.add(layers.Flatten())
+model.add(layers.Dense(64, activation='relu'))
+model.add(layers.Dropout(0.5))
+model.add(layers.Dense(num_classes, activation='softmax'))
 
-#Compiling the initial model 
-model = build_model()
+#Compiling the model 
 model.compile(
     optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),
     loss='categorical_crossentropy',
     metrics=['accuracy']
 )
 
+print("Model successfully compiled.\n")
+print("Model Summary:\n")
 model.summary()
 
+#------------------------------------------------------------------------------
+#Step 3: Hyperparameter Analysis 
+#------------------------------------------------------------------------------
 
-#Training our model for a total of 25 epochs 
-epochs = 5
+print("\n\n-----------------Step 3: Hyperparameter Analysis -----------------\n\n")
+
+from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
+
+#In this step, our adaptive hyperparameter controls are implemented to improve training efficiency.
+#I have furthermore included earlyStopping which halts training when validation loss no longer improves, preventing overfitting.
+#Additionally, ReduceLROnPlateau dynamically reduces the learning rate when improvement stagnates.
+
+callbacks = [
+    EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True),
+    ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=2, verbose=1)
+]
+
+#Training our model using the defined callbacks for efficient convergence
+epochs = 30
 history = model.fit(
     train_generator,
     validation_data=validation_generator,
-    epochs=epochs
+    epochs=epochs,
+    callbacks=callbacks,
+    verbose=1
 )
 
-#-------------------------------------
-#Part B: Initial Baseline Model Training Visualization and Performance Evaluation
-#-------------------------------------
-import matplotlib.pyplot as plt
+print("\nTraining complete.")
 
-plt.figure(figsize=(12, 5))
+#------------------------------------------------------------------------------
+#Step 4: Model Evaluation
+#------------------------------------------------------------------------------
 
-#Accurary Plot for visualization purposes prior to hyperparameter tuning 
-plt.subplot(1, 2, 1)
-plt.plot(history.history['accuracy'], label='Training Accuracy', marker='o')
-plt.plot(history.history['val_accuracy'], label='Validation Accuracy', marker='o')
-plt.title('Model Accuracy Over Epochs')
+print("\n\n-----------------Step 4: Model Evaluation -----------------\n\n")
+
+import matplotlib.pyplot as plt 
+
+#Extracting accuracy and loss metrics from our model training history
+acc = history.history.get('accuracy', [])
+val_acc = history.history.get('val_accuracy', [])
+loss = history.history.get('loss', [])
+val_loss = history.history.get('val_loss', [])
+
+#Plotting Training and Validation Accuracy Curves
+plt.figure(figsize=(8, 5))
+plt.plot(acc, label='Training Accuracy')
+plt.plot(val_acc, label='Validation Accuracy')
+plt.title('Training and Validation Accuracy')
 plt.xlabel('Epoch')
 plt.ylabel('Accuracy')
-plt.legend()
-plt.grid(True)
-
-#Loss Plot for visualization purposes prior to hyperparameter tuning 
-plt.subplot(1, 2, 2)
-plt.plot(history.history['loss'], label='Training Loss', marker='o')
-plt.plot(history.history['val_loss'], label='Validation Loss', marker='o')
-plt.title('Model Loss Over Epochs')
-plt.xlabel('Epoch')
-plt.ylabel('Loss')
-plt.legend()
-plt.grid(True)
-
+plt.legend(loc='lower right')
 plt.tight_layout()
+plt.savefig("Figure_2_accuracy.jpg", dpi=200, bbox_inches="tight", format='jpg')
 plt.show()
 
+#Plotting Training and Validation Loss Curves
+plt.figure(figsize=(8, 5))
+plt.plot(loss, label='Training Loss')
+plt.plot(val_loss, label='Validation Loss')
+plt.title('Training and Validation Loss')
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.legend(loc='upper right')
+plt.tight_layout()
+plt.savefig("Figure_2_loss.jpg", dpi=200, bbox_inches="tight", format='jpg')
+plt.show()
 
+#-------------------------------------
+#Part B: Model Evaluation Summary 
+#-------------------------------------
 
+#Printing out the saved figures for reference
+print("\nSaved files:")
+print("Figure_2_accuracy.jpg")
+print("Figure_2_loss.jpg\n")
 
+#Printing final training and validation metrics for summary comparison
+if acc and val_acc and loss and val_loss:
+    print(f"Final Training Accuracy: {acc[-1]:.3f}")
+    print(f"Final Validation Accuracy: {val_acc[-1]:.3f}")
+    print(f"Final Training Loss: {loss[-1]:.3f}")
+    print(f"Final Validation Loss: {val_loss[-1]:.3f}")
 
-
-
-
+print("\nModel evaluation completed successfully.")
 
 
 
